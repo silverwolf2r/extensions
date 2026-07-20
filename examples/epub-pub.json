@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "name": "epub.pub (demo — will not download)",
+  "providers": [
+    {
+      "id": "epubpub",
+      "name": "epub.pub",
+      "parser": "web-search",
+      "searchBases": ["https://html.duckduckgo.com"],
+      "searchPaths": ["/html/?q={query}%20epub%20site%3Aepub.pub"],
+      "hosts": ["epub.pub"]
+    }
+  ]
+}
