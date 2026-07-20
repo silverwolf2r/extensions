@@ -78,6 +78,20 @@
         "userapi.com",
         "vkuserfile"
       ]
+    },
+    {
+      "id": "novelflow",
+      "name": "NovelFlow",
+      "parser": "chapter-walk",
+      "searchBases": [
+        "https://www.novelflow.app"
+      ],
+      "searchPaths": [
+        "/search?q={query}"
+      ],
+      "novelPathPattern": "/novel/",
+      "chapterPath": "/chapters/{n}",
+      "contentSelector": "non-paywall"
     }
   ]
 }
