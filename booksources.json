@@ -5,7 +5,7 @@
     {
       "id": "libgen",
       "name": "Library Genesis",
-      "parser": "libgen-table",
+      "parser": "html-table",
       "searchBases": [
         "https://libgen.li",
         "https://libgen.vg",
@@ -28,7 +28,7 @@
     {
       "id": "annas",
       "name": "Anna's Archive",
-      "parser": "annas-rows",
+      "parser": "flex-rows",
       "searchBases": [
         "https://annas-archive.gl",
         "https://annas-archive.pk",
@@ -48,7 +48,7 @@
     {
       "id": "zlib",
       "name": "Z-Library",
-      "parser": "zlib-cards",
+      "parser": "web-cards",
       "searchBases": [
         "https://z-lib.gd",
         "https://z-lib.fm",
@@ -64,7 +64,7 @@
     {
       "id": "vk",
       "name": "VK",
-      "parser": "vk-search",
+      "parser": "web-search",
       "searchBases": [
         "https://html.duckduckgo.com"
       ],
@@ -73,6 +73,10 @@
       ],
       "hosts": [
         "vk.com"
+      ],
+      "fileHosts": [
+        "userapi.com",
+        "vkuserfile"
       ]
     }
   ]
