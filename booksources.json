@@ -60,6 +60,20 @@
         "/s/{query}?page={page}&extensions[]=EPUB"
       ],
       "bookPath": "/book/{hash}"
+    },
+    {
+      "id": "vk",
+      "name": "VK",
+      "parser": "vk-search",
+      "searchBases": [
+        "https://html.duckduckgo.com"
+      ],
+      "searchPaths": [
+        "/html/?q={query}%20epub%20site%3Avk.com"
+      ],
+      "hosts": [
+        "vk.com"
+      ]
     }
   ]
 }
