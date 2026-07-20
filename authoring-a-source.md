@@ -4,7 +4,7 @@ This repo hosts `booksources.json` — the book-source config the Fic Reader app
 installs from a URL. This guide explains **how to build a source from scratch**,
 test it, and add it (either to this shared list or as your own private config).
 
-A "source" is pure **data**, never code. It points one of the app's four
+A "source" is pure **data**, never code. It points one of the app's five
 built-in parser *strategies* at some hosts. The app ships the strategies (generic
 web-scraping logic that names no site); your config supplies the domains, paths,
 and download wiring.
@@ -25,7 +25,9 @@ plain GET.
 **Fails** this: anything behind Cloudflare's "Just a moment…", Turnstile, or any
 "checking your browser / enable JavaScript" managed challenge; and single-page
 apps that render results client-side (you'd get an empty shell). A **JSON API**
-the page calls is fine — point the config at that.
+the page calls is fine — point the config at that. Server-rendered content
+(classic HTML, or a framework like Next.js that ships the text in the initial
+HTML) is fine.
 
 > The `web-cards` strategy solves one *self-contained* SHA-1 proof-of-work gate.
 > It does **not** solve a Cloudflare managed challenge — nothing in the app does,
@@ -44,12 +46,17 @@ JavaScript`, `Attention Required`, or an empty `<div id="root">` → it fails.
 the app's no-JS fetch on a phone too — a residential IP adds reputation, not a JS
 engine.)
 
-### Requirement 2 — a real, downloadable EPUB
+### Requirement 2 — a real EPUB, **or** readable chapters
 
-Every download is validated by **magic bytes**: an EPUB is a ZIP, so the file
-must start with `PK`. A site that only offers an *online reader* (streams into a
-JS flip-book, no file) has nothing to download. There must be a reachable actual
-`.epub` (or a link/redirect ending at one).
+Most strategies download a file and validate it by **magic bytes**: an EPUB is a
+ZIP, so it must start with `PK`. A site that only offers an *online reader* has
+no such file.
+
+**The exception is `chapter-walk`:** it assembles an EPUB *on the device* from a
+work's chapter HTML. So a read-online, chaptered site with **no downloadable
+file** can still qualify — as long as the chapter **text is in the HTML** (Req 1)
+and chapters are addressable by a URL you can build (e.g. `…/chapters/1`,
+`…/chapters/2`).
 
 ---
 
@@ -61,13 +68,16 @@ JS flip-book, no file) has nothing to download. There must be a reachable actual
 | `flex-rows` | not a table; each result a block keyed by an `/md5/<32-hex>` link | shared-hash mirrors first, then the site's own `/md5` page |
 | `web-cards` | custom card elements (attributes hold metadata) **and** a self-contained SHA-1 "checking your browser" gate | per-book page → `/dl/{token}` button → anonymous download |
 | `web-search` | you search a **public search engine** for `site:HOST` and resolve hit pages | follow the hit page to a direct `.epub`; validate bytes |
+| `chapter-walk` | a read-online, chaptered site: results link to works; each work reads chapter-by-chapter (`…/chapters/1,2,3…`) with the prose in the HTML | **no file needed** — walk the chapters and assemble an EPUB on-device |
 
-- Site has its own GETtable HTML results page → `html-table` (table) or
-  `flex-rows` (not a table).
+- Site has its own GETtable HTML results page **with EPUB downloads** →
+  `html-table` (table) or `flex-rows` (not a table).
 - Site gates behind a self-contained JS proof-of-work and uses card elements →
   `web-cards`.
 - Scrape-hostile for listing, or you'd rather find books via a search engine →
   `web-search` (also powers "paste a book link to import").
+- Read-online chaptered fiction with **no download** (web-novel readers) →
+  `chapter-walk`.
 
 If the markup matches none of these, the site needs a **new strategy in the app**
 (code + review), not just a config.
@@ -82,6 +92,7 @@ If the markup matches none of these, the site needs a **new strategy in the app*
 | `{page}` | 1-based page number |
 | `{md5}` | book content hash, lower-cased (download templates) |
 | `{hash}` | per-book hash from a `web-cards` result (`bookPath`) |
+| `{n}` | chapter number, 1-based (`chapter-walk` `chapterPath`) |
 
 - **`searchBases`** — one or more `https://` origins, tried in order; list mirrors
   so a dead one is skipped.
@@ -92,6 +103,16 @@ If the markup matches none of these, the site needs a **new strategy in the app*
 - **`bookPath`** (`web-cards`) — per-book page template, e.g. `/book/{hash}`.
 - **`hosts`** (`web-search`, required) — content hosts to keep + resolve.
   **`fileHosts`** (optional) — direct-file CDN hostnames.
+- **`novelPathPattern`** (`chapter-walk`, required) — substring identifying a
+  work link in search results, e.g. `/novel/`. Hits carrying the chapter marker
+  are excluded.
+- **`chapterPath`** (`chapter-walk`, required) — suffix appended to a work URL to
+  build chapter `{n}`, e.g. `/chapters/{n}`. The walk runs n=1,2,3… until a
+  chapter has no free prose or 404s, so it doesn't need a (often partial) chapter
+  list.
+- **`contentSelector`** (`chapter-walk`, optional) — class/id substring of the
+  element wrapping a chapter's prose (e.g. `non-paywall`); prose is scoped to it
+  so nav/footer text is excluded. Omit to take every substantial `<p>`.
 - **`userAgent`** (optional) — override the default desktop UA.
 
 ---
@@ -112,6 +133,9 @@ curl -s -A 'Mozilla/5.0 …' 'https://SITE/your-search-path?with=a+real+query' >
   503 "Checking your browser" page whose script is a self-contained SHA-1 loop.
 - `web-search`: the search engine returns anchors to `site:HOST` pages, and a book
   page on that host has a reachable `.epub` link.
+- `chapter-walk`: search results link to works (`…/novel/<slug>`); a chapter URL
+  (`…/novel/<slug>/chapters/1`) returns the prose in `<p>` tags, ideally inside an
+  identifiable container. Confirm chapter 2, 3, … increment cleanly.
 
 ---
 
@@ -141,6 +165,14 @@ curl -s -A 'Mozilla/5.0 …' 'https://SITE/your-search-path?with=a+real+query' >
   "searchBases": ["https://search-engine.invalid"],
   "searchPaths": ["/html/?q={query}%20epub%20site%3Ahost.invalid"],
   "hosts": ["host.invalid"], "fileHosts": ["cdn.invalid"] }
+
+// chapter-walk
+{ "id": "src", "name": "Source", "parser": "chapter-walk",
+  "searchBases": ["https://host.invalid"],
+  "searchPaths": ["/search?q={query}"],
+  "novelPathPattern": "/novel/",
+  "chapterPath": "/chapters/{n}",
+  "contentSelector": "chapter-content" }
 ```
 
 Envelope:
@@ -151,8 +183,9 @@ Envelope:
 
 The app rejects a file that isn't a JSON object, lists no providers, names an
 unknown `parser`, has a provider with no `https?://` `searchBase` or no
-`searchPath`, or is a `web-search` provider with no `hosts`. A bad file shows a
-specific error at install and nothing is stored.
+`searchPath`, is a `web-search` provider with no `hosts`, or a `chapter-walk`
+provider with no `novelPathPattern`/`chapterPath`. A bad file shows a specific
+error at install and nothing is stored.
 
 ---
 
@@ -190,7 +223,7 @@ link imports without searching.
 
 ---
 
-## 6. Worked example — epub.pub (does **not** qualify)
+## 6. Worked example A — epub.pub (does **not** qualify)
 
 The best teacher is a site that fails the requirements. Take
 `https://www.epub.pub/`.
@@ -201,14 +234,10 @@ curl -s -A 'Mozilla/5.0 …' 'https://www.epub.pub/?s=hail%20mary' | head -c 300
 ```
 
 That's Cloudflare's managed JS challenge — **fails Requirement 1**. The app's
-no-JS fetch can't clear it, so `html-table`, `flex-rows`, `web-cards`, and the
-*download* step of `web-search` all receive the challenge page, not content.
-
-`web-search` sidesteps it only for *search* (it queries a search engine, not
-epub.pub). But the *download* step must fetch the epub.pub book page for its
-`.epub` link — Cloudflare-gated → fails. It would need a direct `.epub` on a
-non-Cloudflare host (epub.pub has none), and epub.pub is largely online-reader
-content anyway (**Requirement 2**).
+no-JS fetch can't clear it, so `html-table`, `flex-rows`, `web-cards`, the
+*download* step of `web-search`, **and** `chapter-walk` all receive the challenge
+page, not content. (Even though epub.pub *does* paginate its reader in HTML — the
+`chapter-walk` idea — the Cloudflare gate blocks fetching those pages at all.)
 
 The config you'd write (valid *shape*, so it installs) is
 [`examples/epub-pub.json`](./examples/epub-pub.json):
@@ -226,8 +255,45 @@ The config you'd write (valid *shape*, so it installs) is
 }
 ```
 
-**Verdict:** installs as a valid `web-search` config, but **won't retrieve
-books** — Cloudflare's JS challenge blocks the fetch, and epub.pub serves an
-online reader rather than downloadable EPUBs. A good `web-search` candidate
-returns plain HTML to a GET *and* has book pages with a real `.epub` link (or a
-direct `.epub` on a plain CDN you can list in `fileHosts`).
+**Verdict:** installs, but **won't retrieve books** — Cloudflare's JS challenge
+blocks the fetch, and epub.pub serves an online reader rather than downloadable
+EPUBs.
+
+## 7. Worked example B — NovelFlow (qualifies via `chapter-walk`)
+
+`https://www.novelflow.app/` is a read-online web-novel site with **no
+downloadable EPUB** — the "Download" buttons are for its own mobile app. Under
+the old rules it would fail like epub.pub. But it passes the two checks:
+
+```bash
+curl -s -A 'Mozilla/5.0 …' 'https://www.novelflow.app/search?q=dragon' | head -c 300
+# → 200, real HTML with /novel/<slug> result links (no Cloudflare challenge)  ✅ Req 1
+curl -s -A 'Mozilla/5.0 …' 'https://www.novelflow.app/novel/<slug>/chapters/1' \
+  | grep -o '<p>[^<]\{40,\}</p>' | head   # → real prose paragraphs           ✅ Req 2 (chapter-walk)
+```
+
+So it's a `chapter-walk` source. Search results link to `/novel/<slug>`; chapters
+are `…/chapters/{n}`; the free prose sits in a `non-paywall` container. The config
+([`examples/novelflow.json`](./examples/novelflow.json), also live in
+`booksources.json`):
+
+```json
+{
+  "version": 1,
+  "name": "NovelFlow (chapter-walk example)",
+  "providers": [
+    { "id": "novelflow", "name": "NovelFlow", "parser": "chapter-walk",
+      "searchBases": ["https://www.novelflow.app"],
+      "searchPaths": ["/search?q={query}"],
+      "novelPathPattern": "/novel/",
+      "chapterPath": "/chapters/{n}",
+      "contentSelector": "non-paywall" }
+  ]
+}
+```
+
+**Verdict:** works. Search returns novels; tapping Import walks `/chapters/1,2,3…`
+on-device, extracts each chapter's `non-paywall` prose, assembles an EPUB, and
+imports it. The walk stops at the first paywalled/empty chapter, so you get the
+**free run** of a book — which is the point to understand: `chapter-walk` captures
+whatever chapters are readable without a login, nothing gated.
