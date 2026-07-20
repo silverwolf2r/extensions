@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "name": "Book sources",
+  "providers": [
+    {
+      "id": "libgen",
+      "name": "Library Genesis",
+      "parser": "libgen-table",
+      "searchBases": [
+        "https://libgen.li",
+        "https://libgen.vg",
+        "https://libgen.la",
+        "https://libgen.bz",
+        "https://libgen.gl"
+      ],
+      "searchPaths": [
+        "/index.php?req={query}&res=100&gmode=on&page={page}",
+        "/search.php?req={query}&res=50&column=def&page={page}"
+      ],
+      "downloadMirrors": [
+        "https://libgen.li/ads.php?md5={md5}",
+        "https://libgen.la/ads.php?md5={md5}",
+        "https://libgen.bz/ads.php?md5={md5}",
+        "https://libgen.gl/ads.php?md5={md5}",
+        "http://library.lol"
+      ]
+    },
+    {
+      "id": "annas",
+      "name": "Anna's Archive",
+      "parser": "annas-rows",
+      "searchBases": [
+        "https://annas-archive.gl",
+        "https://annas-archive.pk",
+        "https://annas-archive.gd",
+        "https://annas-archive.org"
+      ],
+      "searchPaths": [
+        "/search?q={query}&ext=epub&page={page}"
+      ],
+      "downloadMirrors": [
+        "https://libgen.li/ads.php?md5={md5}",
+        "https://libgen.la/ads.php?md5={md5}",
+        "https://libgen.bz/ads.php?md5={md5}",
+        "http://library.lol"
+      ]
+    },
+    {
+      "id": "zlib",
+      "name": "Z-Library",
+      "parser": "zlib-cards",
+      "searchBases": [
+        "https://z-lib.gd",
+        "https://z-lib.fm",
+        "https://z-lib.by",
+        "https://z-library.ec",
+        "https://z-lib.gl"
+      ],
+      "searchPaths": [
+        "/s/{query}?page={page}&extensions[]=EPUB"
+      ],
+      "bookPath": "/book/{hash}"
+    }
+  ]
+}
