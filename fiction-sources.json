@@ -11,7 +11,7 @@
       "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
       "rateLimit": { "perHost": 1 },
       "filters": [
-        { "id": "complete", "label": "Complete only", "type": "toggle", "var": "complete" },
+        { "id": "complete", "label": "Complete only", "type": "toggle", "var": "complete", "onValue": "T", "offValue": "" },
         { "id": "sort", "label": "Sort by", "type": "select", "var": "sort", "options": [
           { "label": "Best match", "value": "_score" },
           { "label": "Kudos", "value": "kudos_count" },
