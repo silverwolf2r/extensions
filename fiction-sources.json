@@ -1,0 +1,157 @@
+{
+  "name": "Fiction sources (rung-3 DSL)",
+  "schemaNote": "aggregator-shell fork format",
+  "sources": [
+    {
+      "schema": 3,
+      "id": "ao3",
+      "name": "Archive of Our Own",
+      "kind": "fiction",
+      "baseUrl": "https://archiveofourown.org",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+      "rateLimit": { "perHost": 1 },
+      "filters": [
+        { "id": "complete", "label": "Complete only", "type": "toggle", "var": "complete" },
+        { "id": "sort", "label": "Sort by", "type": "select", "var": "sort", "options": [
+          { "label": "Best match", "value": "_score" },
+          { "label": "Kudos", "value": "kudos_count" },
+          { "label": "Recently updated", "value": "revised_at" }
+        ] }
+      ],
+      "capabilities": {
+        "search": { "pipeline": [
+          { "request": { "url": "/works/search?work_search%5Bquery%5D={query}&work_search%5Bsort_column%5D={sort}&work_search%5Bcomplete%5D={complete}&page={page}", "render": "html" } },
+          { "select": { "selector": "li.blurb", "as": "list", "fields": {
+            "id": { "sel": "h4.heading a", "get": "attr", "attr": "href", "regex": "/works/(\\d+)", "group": 1 },
+            "title": { "sel": "h4.heading a", "get": "text", "transform": ["collapseWs"] },
+            "url": { "sel": "h4.heading a", "get": "attr", "attr": "href", "resolve": true },
+            "author": { "sel": "a[rel=author]", "get": "text", "transform": ["collapseWs"] }
+          } } },
+          { "emit": { "as": "results" } }
+        ] },
+        "chapters": { "pipeline": [
+          { "request": { "url": "/works/{item.id}/navigate", "render": "html" } },
+          { "select": { "selector": "ol.chapter li a", "as": "list", "fields": {
+            "title": { "get": "text", "transform": ["collapseWs"] },
+            "url": { "get": "attr", "attr": "href", "resolve": true }
+          } } },
+          { "emit": { "as": "chapters" } }
+        ] },
+        "details": { "pipeline": [
+          { "request": { "url": "/works/{item.id}?view_adult=true", "render": "html" } },
+          { "select": { "selector": "html", "as": "one", "fields": {
+            "title": { "sel": "h2.title", "get": "text", "transform": ["collapseWs"] },
+            "author": { "sel": "a[rel=author]", "get": "text", "transform": ["collapseWs"] },
+            "summary": { "sel": ".summary .userstuff", "get": "text", "transform": ["collapseWs"] }
+          } } },
+          { "emit": { "as": "work" } }
+        ] },
+        "content": { "pipeline": [
+          { "request": { "url": "/works/{item.id}?view_full_work=true&view_adult=true", "render": "html" } },
+          { "select": { "selector": "html", "as": "one", "fields": {
+            "title": { "sel": "h2.title", "get": "text", "transform": ["collapseWs"] },
+            "author": { "sel": "a[rel=author]", "get": "text", "transform": ["collapseWs"] }
+          } } },
+          { "select": { "selector": "[role=article] p", "as": "list", "fields": { "text": { "get": "text", "transform": ["collapseWs"] } } } },
+          { "assembleEpub": { "titleFrom": "title", "authorFrom": "author" } }
+        ] }
+      }
+    },
+    {
+      "schema": 3,
+      "id": "royalroad",
+      "name": "Royal Road",
+      "kind": "fiction",
+      "baseUrl": "https://www.royalroad.com",
+      "capabilities": {
+        "search": { "pipeline": [
+          { "request": { "url": "/fictions/search?title={query}&page={page}", "render": "html" } },
+          { "select": { "selector": "div.fiction-list-item", "as": "list", "fields": {
+            "id": { "sel": "h2.fiction-title a", "get": "attr", "attr": "href", "regex": "/fiction/(\\d+)", "group": 1 },
+            "title": { "sel": "h2.fiction-title a", "get": "text", "transform": ["collapseWs"] },
+            "url": { "sel": "h2.fiction-title a", "get": "attr", "attr": "href", "resolve": true }
+          } } },
+          { "emit": { "as": "results" } }
+        ] },
+        "chapters": { "pipeline": [
+          { "request": { "url": "/fiction/{item.id}", "render": "html" } },
+          { "select": { "selector": "tr.chapter-row", "as": "list", "fields": {
+            "title": { "sel": "a", "get": "text", "transform": ["collapseWs"] },
+            "url": { "sel": "a", "get": "attr", "attr": "href", "resolve": true }
+          } } },
+          { "emit": { "as": "chapters" } }
+        ] },
+        "details": { "pipeline": [
+          { "request": { "url": "/fiction/{item.id}", "render": "html" } },
+          { "select": { "selector": "html", "as": "one", "fields": {
+            "title": { "sel": "h1", "get": "text", "transform": ["collapseWs"] },
+            "author": { "sel": "h4 a[href^=\"/profile/\"]", "get": "text", "transform": ["collapseWs"] },
+            "summary": { "sel": "div.description", "get": "text", "transform": ["collapseWs"] }
+          } } },
+          { "emit": { "as": "work" } }
+        ] },
+        "chapterContent": { "pipeline": [
+          { "request": { "url": "{chapter.url}", "render": "html" } },
+          { "select": { "selector": "div.chapter-inner p", "as": "list", "fields": { "text": { "get": "text", "transform": ["collapseWs"] } } } },
+          { "emit": { "as": "prose" } }
+        ] }
+      }
+    },
+    {
+      "schema": 3,
+      "id": "ffn",
+      "name": "FanFiction.Net",
+      "kind": "fiction",
+      "baseUrl": "https://www.fanfiction.net",
+      "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
+      "capabilities": {
+        "search": { "pipeline": [
+          { "request": { "url": "/search/?keywords={query}&ready=1&type=story&ppage={page}", "render": "html" } },
+          { "select": { "selector": "div.z-list", "as": "list", "fields": {
+            "id": { "sel": "a.stitle", "get": "attr", "attr": "href", "regex": "/s/(\\d+)/", "group": 1 },
+            "title": { "sel": "a.stitle", "get": "text", "transform": ["collapseWs"] },
+            "url": { "sel": "a.stitle", "get": "attr", "attr": "href", "resolve": true },
+            "author": { "sel": "a[href^=\"/u/\"]", "get": "text", "transform": ["collapseWs"] }
+          } } },
+          { "emit": { "as": "results" } }
+        ] },
+        "content": { "pipeline": [
+          { "walk": { "urlTemplate": "/s/{item.id}/{n}", "from": 1, "max": 200, "minChars": 40, "content": [
+            { "request": { "url": "/s/{item.id}/{n}", "render": "html" } },
+            { "select": { "selector": "#storytext p", "as": "list", "fields": { "text": { "get": "text", "transform": ["collapseWs"] } } } },
+            { "select": { "selector": "html", "as": "one", "fields": { "title": { "sel": "#profile_top b.xcontrast_txt", "get": "text", "transform": ["collapseWs"] } } } }
+          ] } },
+          { "assembleEpub": { "titleFrom": "title" } }
+        ] }
+      }
+    },
+    {
+      "schema": 3,
+      "id": "wattpad",
+      "name": "Wattpad",
+      "kind": "fiction",
+      "baseUrl": "https://www.wattpad.com",
+      "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
+      "capabilities": {
+        "search": { "pipeline": [
+          { "request": { "url": "/v4/search/stories?query={query}&limit=15&offset=0&fields=stories(id,title,user(name),description,cover,numParts,readCount)", "render": "json" } },
+          { "jsonSelect": { "path": "stories", "as": "list", "fields": {
+            "id": "id", "title": "title", "author": "user.name", "cover": "cover",
+            "url": { "template": "https://www.wattpad.com/story/{id}" }
+          } } },
+          { "emit": { "as": "results" } }
+        ] },
+        "chapters": { "pipeline": [
+          { "request": { "url": "/api/v3/stories/{item.id}?fields=parts(id,title)", "render": "json" } },
+          { "jsonSelect": { "path": "parts", "as": "list", "fields": { "title": "title", "url": "id" } } },
+          { "emit": { "as": "chapters" } }
+        ] },
+        "chapterContent": { "pipeline": [
+          { "request": { "url": "/apiv2/storytext?id={chapter.url}", "render": "html" } },
+          { "select": { "selector": "p", "as": "list", "fields": { "text": { "get": "text", "transform": ["collapseWs"] } } } },
+          { "emit": { "as": "prose" } }
+        ] }
+      }
+    }
+  ]
+}
